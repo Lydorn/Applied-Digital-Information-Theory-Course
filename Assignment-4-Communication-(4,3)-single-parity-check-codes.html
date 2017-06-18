@@ -1,0 +1,420 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Assignment 4</title>
+    <style>
+        body {
+          font: 1.5em sans-serif;
+          width: 100%;
+          margin: auto;
+        }
+        header {
+            color: white;
+            background: steelblue;
+            text-align: center;
+            padding: 5px;
+            border-radius: 15px 15px 0 0;
+        }
+        section {
+            border: 1px solid steelblue;
+            padding: 0 10px 0 10px;
+        }
+        #buttons {
+            text-align: center;
+            margin: 10px;
+        }
+        
+        .axis path,
+        .axis line {
+          fill: none;
+          stroke: #000;
+          shape-rendering: crispEdges;
+        }
+        .line {
+          fill: none;
+          stroke: steelblue;
+          stroke-width: 1.5px;
+        }
+        .label {
+            font-size:0.8em;
+        }
+        
+        footer {
+            text-align: center;
+            background: steelblue;
+            padding: 5px;
+            border-radius: 0 0 10px 10px;
+        }
+        footer p {
+            font-size: 0.75em;
+            margin: 0px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Assignment 4: Communication with (4,3)-single parity check codes</h1>
+    </header>
+    <section>
+        <p>Here you can change the initial value of the memoryless source, the initial value of the error sequences and the number of blocks of the generated chaotic sequences with errors. The common memoryless source is generated with a skewtent map with c=0.5. Error sequences are generated with a memoryless source as well as with a Markov-type source. The bit error probability p takes the folowing values: [0.1, 0.2, 0.3, 0.4, 0.4999999999999] and for the Markov-type source the second parameter p2 takes the following values: [0.1, 0.3, 0.4999999999999, 0.7, 0.9]. Click "Plot !" to see the result.</p>
+        <div id="controls">
+            <label>Initial value of the source: </label>
+            <input type="number" min="0" max="1" step="0.001" id="x0" value=0.05></input>
+            <label>Initial value of the error sequences: </label>
+            <input type="number" min="0" max="1" step="0.001" id="z0" value=0.05></input>
+            <label>Number of blocks: </label>
+            <input type="number" min="0" max="100000000" step="1000000" id="length" value=10000></input>
+        </div>
+        <div id="buttons">
+            <button id="button_plot">Plot !</button>
+        </div>
+        <div>
+            <center>
+                <h3>Plot of undetected errors in relation with bit error probability (Theoretical values in dashed lines)</h3>
+                <div id="plot_area"></div>
+                <div id="loading">Plotting...</div>
+            </center>
+        </div>
+        <div>
+            <h3>Discussion about the results</h3>
+            <p>Generally, the rate of undetected errors rises as the bit error probability gets higher. Also as p2 gets higher, the rate of undetected error is less and less linearly proportional to the bit error probability.</p>
+        </div>
+        <div>
+            <h3>Relevent code</h3>
+            <p>Here is the function computing the rate of undetected error for memoryless error. The function for Markov error is very similar:</p>
+            <pre>
+                function computeMemorylessError(source, k, z0, c_error, length) {
+                    var xb0, xb1, xb2, xb3;
+                    var z1, z2, z3;
+                    var zb0, zb1, zb2, zb3;
+                    var r0, r1, r2, r3;
+                    var z = z0;
+                    var derr = 0;
+                    var err;
+                    for (var i=0; i < length; i++) {
+                        xb0 = source[k*i];
+                        xb1 = source[k*i+1];
+                        xb2 = source[k*i+2];
+                        xb3 = xb0^xb1^xb2;
+                        z1 = evalSkewTentMap(z, c_error);
+                        z2 = evalSkewTentMap(z1, c_error);
+                        z3 = evalSkewTentMap(z2, c_error);
+                        zb0 = evalBinaryFunction(z, c_error);
+                        zb1 = evalBinaryFunction(z1, c_error);
+                        zb2 = evalBinaryFunction(z2, c_error);
+                        zb3 = evalBinaryFunction(z3, c_error);
+                        r0 = xb0^zb0;
+                        r1 = xb0^zb1;
+                        r2 = xb0^zb2;
+                        r3 = xb0^zb3;
+                        err = (zb0 || zb1 || zb2 || zb3);
+                        z = evalSkewTentMap(z3, c_error);
+                        derr += (r0^r1^r2^r3^err);
+                    }
+                    return derr/length;
+                }
+            </pre>
+            <p>To see all the code you can "Right-click -> View page source" and look at the script tags.</p>
+        </div>
+    </section>
+    <footer>
+        <p>Author: Nicolas GIRARD | Last update: 2015/12/20</p>
+    </footer>
+</body>
+
+
+<script src="d3.min.js" charset="utf-8"></script>
+<script>
+window.requestAnimationFrame = (function () {
+   return window.requestAnimationFrame ||
+         window.webkitRequestAnimationFrame ||
+         window.mozRequestAnimationFrame ||
+         function (callback) {
+             window.setTimeout(callback, 1000 / 60);
+         };
+     })();
+function evalSkewTentMap(x, c) {
+    if (0 <= c && c <= 1 && 0 <= x && x <= 1) {
+        if (0 <= x && x < c) {
+            return x/c;
+        }
+        else {
+            return (1-x)/(1-c);
+        }
+    }    
+    else {
+        console.log("WARNING: c and x should be between 0 and 1");
+    }
+}
+function evalPiecewiseMap(x, c, p1, p2) {
+    var a = 1/(1 - p1 - p2);
+    if (0 < a) {
+        var c1 = c*(1-1/a);
+        var c2 = c + (1-c)/a;
+    }
+    else {
+        var c2 = c*(1-1/a);
+        var c1 = c + (1-c)/a;
+    }
+    
+    if (0 < x && x < c1) {
+        return 1-x/c1;
+    }
+    else if (c1 < x && x < c2) {
+        return (0<a) ? (x-c1)*a:(x-c2)*a;
+    }
+    else if (c2 < x && x < 1) {
+        return (1-x)/(1-c2);
+    }
+    else {stroke-dasharray
+        console.log("WARNING: at least one value is out of bounds. x = ", x);
+        return 0;
+    }
+}
+function evalBinaryFunction(x, t) {
+    return Number(x >= t);
+}
+function plotMultipleLines(xaxis, yaxis, data) {
+    var margin = {top: 20, right: 50, bottom: 30, left: 50},
+        width = 960 - margin.left - margin.right,
+        height = 600 - margin.top - margin.bottom;
+
+    var x = d3.scale.linear()
+        .range([0, width]);
+
+    var y = d3.scale.linear()
+        .range([height, 0]);
+
+    var color = d3.scale.category10();
+
+    var xAxis = d3.svg.axis()
+        .scale(x)
+        .orient("bottom");
+
+    var yAxis = d3.svg.axis()
+        .scale(y)
+        .orient("left");
+
+    var line = d3.svg.line()
+        .interpolate("basis")
+        .x(function(d) { return x(d.x); })
+        .y(function(d) { return y(d.y); });
+
+    var svg = d3.select("#plot_area").append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    color.domain(data.map(function(d) {return d.id;}));
+  
+    x.domain([
+        d3.min(data, function(d) { return d3.min(d.values, function(v) { return v.x; }); }),
+        d3.max(data, function(d) { return d3.max(d.values, function(v) { return v.x; }); })
+    ]);
+
+    y.domain([
+        d3.min(data, function(d) { return d3.min(d.values, function(v) { return v.y; }); }),
+        d3.max(data, function(d) { return d3.max(d.values, function(v) { return v.y; }); })
+    ]);
+
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis)
+      .append("text")
+          .attr("x", width)
+          .attr("y", -6)
+          .style("text-anchor", "end")
+          .text(xaxis);
+
+    svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text(yaxis);
+
+    var data_line = svg.selectAll(".line")
+      .data(data)
+    .enter().append("g");
+
+    data_line.append("path")
+      .attr("d", function(d) { return line(d.values); })
+      .attr("class", "line")
+      .style("stroke-dasharray", function(d) { return d.dasharray; })
+      .style("stroke", function(d) { return color(d.id); });
+
+    var legend_unique_labels = {};
+    data.forEach(function(d) { legend_unique_labels[d.id] = {id: d.id, label: d.label}; });
+    var legend_labels = [];
+    for (var key in legend_unique_labels) {
+        if (legend_unique_labels.hasOwnProperty(key)) {
+            legend_labels.push(legend_unique_labels[key]);
+        }
+    }
+
+    var legend = svg.selectAll(".legend")
+      .data(legend_labels)
+    .enter().append("g")
+      .attr("class", "legend")
+      .attr("transform", function(d, i) { return "translate(" + (-width + 100) + "," + i * 20 + ")"; });
+
+    legend.append("rect")
+        .attr("x", width - 18)
+        .attr("width", 18)
+        .attr("height", 18)
+        .style("fill", function(d, i) { return color(d.id); });
+
+    legend.append("text")
+        .attr("x", width + 5)
+        .attr("y", 9)
+        .attr("dy", ".35em")
+        .style("text-anchor", "start")
+        .style("fill", function(d, i) { return color(d.id); })
+        .text(function(d) { return d.label; });
+}
+function generateMemorylessSource(x0, c, length) {
+    var x = x0;
+    var binary_x;
+    var data = [];
+    for (var i=0; i < length; i++) {
+        x = evalSkewTentMap(x, c);
+        binary_x = evalBinaryFunction(x, c);
+        data.push(binary_x);
+    }
+    return data;
+}
+function computeMemorylessError(source, k, z0, c_error, length) {
+    var xb0, xb1, xb2, xb3;
+    var z1, z2, z3;
+    var zb0, zb1, zb2, zb3;
+    var r0, r1, r2, r3;
+    var z = z0;
+    var derr = 0;
+    var err;
+    for (var i=0; i < length; i++) {
+        xb0 = source[k*i];
+        xb1 = source[k*i+1];
+        xb2 = source[k*i+2];
+        xb3 = xb0^xb1^xb2;
+        z1 = evalSkewTentMap(z, c_error);
+        z2 = evalSkewTentMap(z1, c_error);
+        z3 = evalSkewTentMap(z2, c_error);
+        zb0 = evalBinaryFunction(z, c_error);
+        zb1 = evalBinaryFunction(z1, c_error);
+        zb2 = evalBinaryFunction(z2, c_error);
+        zb3 = evalBinaryFunction(z3, c_error);
+        r0 = xb0^zb0;
+        r1 = xb1^zb1;
+        r2 = xb2^zb2;
+        r3 = xb3^zb3;
+        err = (zb0 || zb1 || zb2 || zb3);
+        z = evalSkewTentMap(z3, c_error);
+        derr += (r0^r1^r2^r3^err);
+    }
+    return derr/length;
+}
+function computeMarkovError(source, k, z0, c_error, p1, p2, length) {
+    var xb0, xb1, xb2, xb3;
+    var z1, z2, z3;
+    var zb0, zb1, zb2, zb3;
+    var r0, r1, r2, r3;
+    var z = z0;
+    var derr = 0;
+    var err;
+    for (var i=0; i < length; i++) {
+        xb0 = source[k*i];
+        xb1 = source[k*i+1];
+        xb2 = source[k*i+2];
+        xb3 = xb0^xb1^xb2;
+        z1 = evalPiecewiseMap(z, c_error, p1, p2);
+        z2 = evalPiecewiseMap(z1, c_error, p1, p2);
+        z3 = evalPiecewiseMap(z2, c_error, p1, p2);
+        zb0 = evalBinaryFunction(z, c_error);
+        zb1 = evalBinaryFunction(z1, c_error);
+        zb2 = evalBinaryFunction(z2, c_error);
+        zb3 = evalBinaryFunction(z3, c_error);
+        r0 = xb0^zb0;
+        r1 = xb1^zb1;
+        r2 = xb2^zb2;
+        r3 = xb3^zb3;
+        err = (zb0 || zb1 || zb2 || zb3);
+        z = evalSkewTentMap(z3, c_error, p1, p2);
+        derr += (r0^r1^r2^r3^err);
+    }
+    return derr/length;
+}
+function computeTheoriticalMemorylessError(p) {
+    return 6*Math.pow(p, 2)*Math.pow(1-p, 2) + Math.pow(p, 4);
+}
+function computeTheoriticalMarkovError(c, p1, p2) {
+    return c*((1-p1)*p1*(1-p2) + p1*(1-p2)*p2 + p1*p2*p1) + (1-c)*(p2*(1-p1)*p1 + p2*p1*p2 + (1-p2)*p2*(1-p1) + (1-p2)*(1-p2)*(1-p2));
+}
+
+var c_source = 0.4999999999999;
+var array_p = [0.1, 0.2, 0.3, 0.4, 0.4999999999999];
+var array_p2 = [0.1, 0.3, 0.4999999999999, 0.7, 0.9];
+var n=4, k=3;
+
+document.addEventListener("DOMContentLoaded", init, false);
+
+function init() {
+    document.getElementById('button_plot').addEventListener("click", function(){
+        compute();
+    });
+    compute();
+}
+function compute() {
+    requestAnimationFrame(function() {
+        document.getElementById("loading").style.display = "block";
+        d3.select('svg').remove();
+        requestAnimationFrame(function() {
+            var x0 = Number(document.getElementById('x0').value);
+            var z0 = Number(document.getElementById('z0').value);
+            var length = Number(document.getElementById('length').value);
+            var memoryless_source = generateMemorylessSource(x0, c_source, length*k);
+            var p, c_error;
+            var data = [];
+            //Memoryless error
+            var label = "Memoryless";
+            var values = [];
+            var theoritical_values = [];
+            for (var i=0, i_max=array_p.length; i < i_max; i++) {
+                p = array_p[i];
+                c_error = 1 - p;
+                values.push({x: p, y: computeMemorylessError(memoryless_source, k, z0, c_error, length)});
+                theoritical_values.push({x: p, y: computeTheoriticalMemorylessError(p)});
+            }
+            data.push({id: 0, label: label, dasharray: "", values: values});
+            data.push({id: 0, label: label, dasharray: "8, 4", values: theoritical_values});
+            //Markov error
+            var p1, p2;
+            for (var i=0, i_max=array_p2.length; i < i_max; i++) {
+                p2 = array_p2[i];
+                label = "Markov p2 = " + Math.round(10*p2)/10;
+                values = [];
+                theoritical_values = [];
+                for (var j=0, j_max=array_p.length; j < j_max; j++) {
+                    p = array_p[j];
+                    c_error = 1 - p;
+                    p1 = ((1-c_error)/c_error)*p2;
+                    values.push({x: p, y: computeMarkovError(memoryless_source, k, z0, c_error, p1, p2, length)});
+                    theoritical_values.push({x: p, y: computeTheoriticalMarkovError(c_error, p1, p2)});
+                }
+                data.push({id: i+1, label: label, dasharray: "", values: values});
+                data.push({id: i+1, label: label, dasharray: "8, 4", values: theoritical_values});
+            }
+            plotMultipleLines("Bit error probability", "Undetected error rate", data);
+            requestAnimationFrame(function() {
+                document.getElementById("loading").style.display = "none";
+            });
+        });
+    });
+}
+</script>
+</html>

@@ -1,0 +1,284 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Assignment 2 Part 2</title>
+    <style>
+        body {
+          font: 1.5em sans-serif;
+          width: 100%;
+          margin: auto;
+        }
+        input {
+            font-size: 1em;
+        }
+        header {
+            color: white;
+            background: steelblue;
+            text-align: center;
+            padding: 5px;
+            border-radius: 15px 15px 0 0;
+        }
+        section {
+            border: 2px solid steelblue;
+            padding: 0 10px 0 10px;
+        }
+        #buttons {
+            text-align: center;
+            margin: 10px;
+        }
+        .axis path,
+        .axis line {
+          fill: none;
+          stroke: #000;
+          shape-rendering: crispEdges;
+        }
+        .x.axis path {
+          display: none;
+        }
+        .dot {
+            stroke: #000;
+            fill: steelblue;
+        }
+        footer {
+            text-align: center;
+            background: steelblue;
+            padding: 5px;
+            border-radius: 0 0 10px 10px;
+        }
+        footer p {
+            margin: 0px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Assignment 3: Generating binary sequences based on piecewise linear chaotic maps</h1>
+        <h2>Part 2: Relation between entropy and compression ratio</h2>
+    </header>
+    <section>
+        <p>Here you can change the initial value and the sequence length of the 45 generated chaotic sequences. The parameters p1 and p2 are fixed and have the following values: p1 = 0.1, ..., 0.9 and p2 = 0.1, ..., p1. Click "Plot !" to see the result of the compression.</p>
+        <div id="controls">
+            <label>Initial value: </label>
+            <input type="number" min="0" max="1" step="0.001" id="x" value=0.111></input>
+            <span>p1 = 0.1, .., 0.9 |</span>
+            <span>p2 = 0.1, ..., p1 | </span>
+            <label>Sequences length: </label>
+            <input type="number" min="0" max="100000000" step="1000000" id="length" value=100000></input>
+        </div>
+        <div id="buttons">
+            <button id="button_plot">Plot !</button>
+        </div>
+        <div>
+            <h3>Plot of compression ratio in relation with entropy:</h3>
+            <center>
+                <div id="plot_area"></div>
+                <div id="loading">Plotting...</div>
+            </center>
+        </div>
+        <div>
+            <h3>Discussion about the results</h3>
+            <p>The compression is done using a Javascript implementation of the LZW compression algorithm.</p>
+            <p>We can see the compression ratio (compressed/original) is linearly depandant from the entropy of the source regardless of the initial value.</p>
+            <p>This is less true when the length of the sequences diminish: the compression algorithm is less effective and less consistant.</p>
+            <p>The actual values for the parameters p1 and p2 are shifted by -0.0000000001 to avoid problems.</p>
+            <p>The figures for the piecewise map can be seen in part 1 of this assignement.</p>
+        </div>
+        <div>
+            <h3>Relevant code</h3>
+            <p>Here is the function computing the entropy of the memoryless source:</p>
+            <pre>
+                function entropyMemoryless(p1, p2) {
+                    return (p2/(p1+p2))*(-p1*Math.log(p1, 2) - (1-p1)*Math.log(1-p1, 2))
+                         + (p1/(p1+p2))*(-p2*Math.log(p2, 2) - (1-p2)*Math.log(1-p2, 2));
+                }
+            </pre>
+            <p>And here is the function generating a string from the binary source, compressing it and adding the result to the plotted data:</p>
+            <pre>            
+                function generatePoint(p1, p2) {
+                    current_length = 0;
+                    string  = "";
+                    while (current_length < length) {
+                        x = evalPiecewiseMap(x, c1, c2, a);
+                        binary_x = evalBinaryFunction(x, c);
+                        string += String(binary_x);
+                        current_length++;
+                    }
+                    compressed = LZString.compress(string);
+                    data.push({entropy: entropyMemoryless(p1, p2), compression: compressed.length*16/length});
+                }
+            </pre>
+            <p>And fanally the code for generating the parameters is:</p>
+            <pre>
+                for (p1 = 0.0999999999; p1 < 0.9; p1 += 0.1) {
+                    for (p2 = 0.0999999999; p2 <= p1; p2 += 0.1) {
+                        x = x_init;
+                        initMap(p1, p2);
+                        generatePoint(p1, p2);
+                    }
+                }
+            </pre>
+            <p>To see all the code you can "Right-click -> View page source" and look at the script tags.</p>
+        </div>
+    </section>
+    <footer>
+        <p>Author: Nicolas GIRARD | Last update: 2015/12/05</p>
+    </footer>
+</body>
+
+
+<script src="d3.min.js" charset="utf-8"></script>
+<script language="javascript" src="lz-string.min.js"></script>
+<script>
+window.requestAnimationFrame = (function () {
+   return window.requestAnimationFrame ||
+         window.webkitRequestAnimationFrame ||
+         window.mozRequestAnimationFrame ||
+         function (callback) {
+             window.setTimeout(callback, 1000 / 60);
+         };
+     })();
+function initMap(p1, p2) {
+    c = p2/(p1 + p2);
+    a = 1/(1 - p1 - p2);
+    if (0 < a) {
+        c1 = c*(1-1/a);
+        c2 = c + (1-c)/a;
+    }
+    else {
+        c2 = c*(1-1/a);
+        c1 = c + (1-c)/a;
+    }
+    //console.log("c = ", c, "a = ", a, "c1 = ", c1, "c2 = ", c2, "d1 = ", d1,"d2 = ", d2);
+}
+function evalPiecewiseMap(x, c1, c2, a) {
+    if (0 < x && x < c1) {
+        return 1-x/c1;
+    }
+    else if (c1 < x && x < c2) {
+        return (0<a) ? (x-c1)*a:(x-c2)*a;
+    }
+    else if (c2 < x && x < 1) {
+        return (1-x)/(1-c2);
+    }
+    else {
+        console.log("WARNING: at least one value is out of bounds. x = ", x);
+        return 0;
+    }
+}
+function evalBinaryFunction(x, t) {
+    return Number(t <= x);
+}
+function plotLines(data) {
+    var margin = {top: 20, right: 50, bottom: 60, left: 90};
+    var width = 700 - margin.left - margin.right;
+    var height = 500 - margin.top - margin.bottom;
+    var x = d3.scale.linear()
+        .range([0, width]);
+    var y = d3.scale.linear()
+        .range([height, 0]);
+    var xAxis = d3.svg.axis()
+        .scale(x)
+        .orient("bottom");
+    var yAxis = d3.svg.axis()
+        .scale(y)
+        .orient("left");
+    var line = d3.svg.line()
+        .x(function(d) { return x(d.entropy); })
+        .y(function(d) { return y(d.compression); });
+    var svg = d3.select("#plot_area").append("svg")
+    .attr("id", "plot")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        
+    x.domain(d3.extent(data, function(d) { return d.entropy; }));
+    y.domain(d3.extent(data, function(d) { return d.compression; }));
+
+    svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis)
+    .append("text")
+      .attr("x", width)
+      .attr("y", 50)
+      .attr("dx", ".71em")
+      .style("text-anchor", "end")
+      .text("Entropy");
+
+    svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", -80)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Compression ratio");
+
+    svg.selectAll(".dot")
+        .data(data)
+      .enter().append("circle")
+        .attr("class", "dot")
+        .attr("r", 3.5)
+        .attr("cx", function(d) { return x(d.entropy); })
+        .attr("cy", function(d) { return y(d.compression); });
+}
+function entropyMemoryless(p1, p2) {
+    return (p2/(p1+p2))*(-p1*Math.log(p1, 2) - (1-p1)*Math.log(1-p1, 2))
+         + (p1/(p1+p2))*(-p2*Math.log(p2, 2) - (1-p2)*Math.log(1-p2, 2));
+}
+function generatePoint(p1, p2) {
+    current_length = 0;
+    string  = "";
+    while (current_length < length) {
+        x = evalPiecewiseMap(x, c1, c2, a);
+        binary_x = evalBinaryFunction(x, c);
+        string += String(binary_x);
+        current_length++;
+    }
+    compressed = LZString.compress(string);
+    data.push({entropy: entropyMemoryless(p1, p2), compression: compressed.length*16/length});
+}
+var x_init, x, length, current_length;
+var c, a, c1, c2;
+var p1, p2;
+var binary_x, compressed;
+var string;
+var data = [];
+
+document.addEventListener("DOMContentLoaded", init, false);
+
+function init() {
+    document.getElementById('button_plot').addEventListener("click", function(){
+        compute();
+    });
+    compute();
+}
+function compute() {
+    requestAnimationFrame(function() {
+        document.getElementById("loading").style.display = "block";
+        d3.select('svg').remove();
+        
+        
+        requestAnimationFrame(function() {
+            x_init = Number(document.getElementById('x').value);
+            length = Number(document.getElementById('length').value);
+            data = [];
+            for (p1 = 0.0999999999; p1 < 0.9; p1 += 0.1) {
+                for (p2 = 0.0999999999; p2 <= p1; p2 += 0.1) {
+                    x = x_init;
+                    initMap(p1, p2);
+                    generatePoint(p1, p2);
+                }
+            }
+            plotLines(data);
+            requestAnimationFrame(function() {
+                document.getElementById("loading").style.display = "none";
+            });
+        });
+    });
+}
+</script>
+</html>

@@ -1,0 +1,384 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Chaotic sequence Skew tent map</title>
+    <style>
+        body {
+          font: 16px sans-serif;
+          width: 930px;
+          margin: auto;
+        }
+        header {
+            height: 100px;
+            color: white;
+            background: steelblue;
+            text-align: center;
+            padding: 5px;
+            border-radius: 15px 15px 0 0;
+        }
+        section {
+            border: 1px solid steelblue;
+            padding: 0 10px 0 10px;
+        }
+        .graph_title {
+            text-align: center;
+            margin-bottom: 0;
+        }
+        #buttons {
+            text-align: center;
+            margin: 10px;
+        }
+        .point_line, .line {
+            stroke: steelblue;
+        }
+        .bar {
+            fill: steelblue;
+        }
+        .bar:hover {
+            fill: brown;
+        }
+        .axis path,
+        .axis line {
+          fill: none;
+          stroke: #000;
+          shape-rendering: crispEdges;
+        }
+        footer {
+            height: 15px;
+            text-align: center;
+            background: steelblue;
+            padding: 5px;
+            border-radius: 0 0 10px 10px;
+        }
+        footer p {
+            margin: 0px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Generating chaotic real-valued sequences by skew tent maps</h1>
+    </header>
+    <section>
+        <p>Here you can change the initial value, the c parameter of the skew tent map and the sequence length of the generated chaotic sequence. Click "Plot !" to see the result. Plotting only the histogram is much faster so it is recommended for very long sequences.</p>
+        <div id="controls">
+            <label>Initial value: </label>
+            <input type="number" min="0" max="1" step="0.001" id="x" value=0.1></input>
+            <label>c: </label>
+            <input type="number" min="0" max="1" step="0.001" id="c" value=0.55></input>
+            <label>Sequence length: </label>
+            <input type="number" min="0" max="1000000" step="1000" id="length" value=10000></input>
+        </div>
+        <div id="buttons">
+            <button id="button_plot">Plot !</button>
+            <button id="button_plot_hist">Plot histogram only (Much faster)</button>
+        </div>
+        <div id="plots">
+            <div class="graph">
+                <h3 class="graph_title">Orbits graph</h3>
+                <svg id="plot_main"></svg>
+            </div>
+            <div class="graph">
+                <h3 class="graph_title">Histogram graph</h3>
+                <svg id="plot_hist"></svg>
+            </div>
+        </div>
+        <div>
+            <h3>Discussion about the results</h3>
+            <p>The first thing I discovered is that for certain values of the initial value and c, the sequences converge to zero. Example: initial value = 0.1, c = 0.5. The parameter c must be a bit more complicated to avoid this behavior. For example c = 0.55. Also the initial value and c should be different.</p>
+            <p>Changing the initial value slighty does change the sequence dramatically. For exemple adding 0.000000001 to the initial value gives a very different sequence (for a length of at least 50). The first values are similar for a very small difference.</p>
+            <p>For a sequence lenght of at least 1 000 000, we can see on the density histogram that the distribution is uniform. It is even more visible for a sequence length of 10 000 000.</p>
+            <p>The most important piece of code is the skew tent map function. The rest is to generate the sequence using the skew tent map function with the user parameters and to plot the graphs.</p>
+            <p>Here is the skew tent map function:</p>
+                <pre>
+                    function evalSkewTentMap(x, c) {
+                        if (0 <= c && c <= 1 && 0 <= x && x <= 1) {
+                            if (0 <= x && x < c) {
+                                return x/c;
+                            }
+                            else {
+                                return (1-x)/(1-c);
+                            }
+                        }    
+                        else {
+                            console.log("WARNING: c and x should be between 0 and 1");
+                        }
+                    }
+                </pre>
+        </div>
+    </section>
+    <footer>
+        <p>Author: Nicolas GIRARD | Last update: 2015/10/22</p>
+    </footer>
+</body>
+
+
+<script src="d3.min.js" charset="utf-8"></script>
+<script>
+window.requestAnimationFrame = (function () {
+   return window.requestAnimationFrame ||
+         window.webkitRequestAnimationFrame ||
+         window.mozRequestAnimationFrame ||
+         function (callback) {
+             window.setTimeout(callback, 1000 / 60);
+         };
+     })();
+function evalSkewTentMap(x, c) {
+    if (0 <= c && c <= 1 && 0 <= x && x <= 1) {
+        if (0 <= x && x < c) {
+            return x/c;
+        }
+        else {
+            return (1-x)/(1-c);
+        }
+    }    
+    else {
+        console.log("WARNING: c and x should be between 0 and 1");
+    }
+}
+function plotMainInit(length) {
+    var margin = {top: 20, right: 50, bottom: 60, left: 60},
+        width = 900 - margin.left - margin.right,
+        height = 400 - margin.top - margin.bottom;
+    // setup x 
+    var xValue = function(d, i) { return i;}, // data -> value
+        xScale = d3.scale.linear().range([0, width]), // value -> display
+        xMap = function(d, i) { return xScale(xValue(d, i));}, // data -> display
+        xAxis = d3.svg.axis().scale(xScale).orient("bottom");
+
+    // setup y
+    var yValue = function(d) { return d;}, // data -> value
+        yScale = d3.scale.linear().range([height, 0]), // value -> display
+        yMap = function(d) { return yScale(yValue(d));}, // data -> display
+        yAxis = d3.svg.axis().scale(yScale).orient("left");
+
+    // add the graph canvas to the body of the webpage
+    var svg = d3.select("#plot_main")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    xScale.domain([0, length]);
+    yScale.domain([0, 1]);
+
+    // x-axis
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis)
+    .append("text")
+        .attr("class", "label")
+        .attr("x", width)
+        .attr("y", 50)
+        .style("text-anchor", "end")
+        .text("iteration number");
+
+    // y-axis
+    svg.append("g")
+    .attr("class", "y axis")
+    .call(yAxis)
+    .append("text")
+        .attr("class", "label")
+        .attr("transform", "rotate(-90)")
+        .attr("y", -50)
+        .attr("dy", ".71em")
+        .style("text-anchor", "end")
+        .text("x_n");
+    
+    svg.append("rect")
+        .attr("id", "progress_bar")
+        .attr("class", "bar")
+        .attr("x", 0)
+        .attr("width", 0)
+        .attr("y", height + 25)
+        .attr("height", 10);
+    
+    
+    return {svg: svg, xScale: xScale, xAxis: xAxis, xMap: xMap, yMap: yMap};
+}
+function plotHistInit() {
+    var margin = {top: 20, right: 50, bottom: 60, left: 60},
+    width = 900 - margin.left - margin.right,
+    height = 250 - margin.top - margin.bottom;
+
+    var x = d3.scale.linear()
+        .range([0, width]);
+
+    var y = d3.scale.linear()
+        .range([height, 0]);
+
+    var xAxis = d3.svg.axis()
+        .scale(x)
+        .orient("bottom")
+        .ticks(10);
+
+    var yAxis = d3.svg.axis()
+        .scale(y)
+        .orient("left")
+        .ticks(10);
+
+    var svg = d3.select("#plot_hist")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    x.domain([0, 1]);
+    y.domain([0, 2]);
+
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis)
+      .append("text")
+        .attr("class", "label")
+        .attr("x", width)
+        .attr("y", 50)
+        .style("text-anchor", "end")
+        .text("x_n");
+
+    svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", -50)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Density");
+      
+    svg.selectAll(".bar")
+      .data(array_hist)
+    .enter().append("rect")
+      .attr("class", "bar")
+      .attr("id", function(d, i) {return "bar_" + i;})
+      .attr("x", function(d, i) { return x(i/hist_slices_count); })
+      .attr("width", width/hist_slices_count)
+      .attr("y", 0)
+      .attr("height", 0);
+      
+    return {svg: svg, width: width, height: height, x: x, y: y};
+}
+function plotPoint(plot, d, i) {
+    // draw points
+    var half_width = 3;
+    plot.svg.append("svg:line")
+        .attr("class", "point_line")
+        .attr("x1", plot.xMap(d, i) - half_width).attr("y1", plot.yMap(d))
+        .attr("x2", plot.xMap(d, i) + half_width).attr("y2", plot.yMap(d));
+    plot.svg.append("svg:line")
+        .attr("class", "point_line")
+        .attr("x1", plot.xMap(d, i)).attr("y1", plot.yMap(d) - half_width)
+        .attr("x2", plot.xMap(d, i)).attr("y2", plot.yMap(d) + half_width);
+    return true;
+}
+function updateProgressBar() {
+    progress_bar
+        .attr("width", plot_main.xMap(0, current_length));
+}
+function updateHist() {
+    for (i = 0; i < hist_slices_count; i++) {
+        bar_param = plot_hist.y(array_hist[i]*hist_slices_count/current_length);
+        d3.select("#bar_" + i)
+          .attr("y", bar_param)
+          .attr("height", plot_hist.height - bar_param);
+     }
+}
+function newFilledArray(len, val) {
+    var rv = new Array(len);
+    while (--len >= 0) {
+        rv[len] = val;
+    }
+    return rv;
+}
+var x, current_length, i, j, c, length, chunck_length, plot_main, array_hist, hist_slices_count, plot_hist, bar_param, progress_bar;
+
+document.addEventListener("DOMContentLoaded", init, false);
+
+function init() {
+    hist_slices_count = 500;
+    array_hist = newFilledArray(hist_slices_count, 0);
+    length = document.getElementById('length').value;
+    plot_main = plotMainInit();
+    plot_hist = plotHistInit();
+    progress_bar = d3.select("#progress_bar");
+    
+    document.getElementById('button_plot').addEventListener("click", function(){
+        plot();
+    });
+    document.getElementById('button_plot_hist').addEventListener("click", function(){
+        plotOnlyHist();
+    });
+    plot();
+}
+function plot() {
+    x = document.getElementById('x').value;
+    c = document.getElementById('c').value;
+    length = document.getElementById('length').value;
+    chunck_length = Math.max(1, Math.min(1000, length/100));
+    //Update and clear main plot
+    plot_main.xScale.domain([0, length]);
+    plot_main.xAxis.scale(plot_main.xScale);
+    d3.select('.x.axis').call(plot_main.xAxis);
+    d3.selectAll('.point_line').remove();
+    //Clear histogram
+    array_hist = newFilledArray(hist_slices_count, 0);
+    
+    plotPoint(plot_main, x, 0);
+    current_length = 1;
+    array_hist[(x*hist_slices_count) >> 0]++;//Update array_hist
+    updateHist();
+    updateProgressBar();
+    requestAnimationFrame(drawingLoop);
+}
+function drawingLoop() {
+    j = 0;
+    while ((j < chunck_length) && (current_length < length)) {
+        x = evalSkewTentMap(x, c);
+        plotPoint(plot_main, x, current_length);
+        array_hist[(x*hist_slices_count) >> 0]++;//Update array_hist
+        current_length++;
+        j++;
+    }
+    updateProgressBar();
+    if (current_length < length) {
+        updateHist();
+        requestAnimationFrame(drawingLoop);
+    }
+}
+function plotOnlyHist() {
+    x = document.getElementById('x').value;
+    c = document.getElementById('c').value;
+    length = document.getElementById('length').value;
+    chunck_length = Math.max(1, Math.min(1000, length/10));
+    //Update and clear main plot
+    plot_main.xScale.domain([0, length]);
+    plot_main.xAxis.scale(plot_main.xScale);
+    d3.select('.x.axis').call(plot_main.xAxis);
+    d3.selectAll('.point_line').remove();
+    //Clear histogram
+    array_hist = newFilledArray(hist_slices_count, 0);
+    
+    current_length = 1;
+    array_hist[(x*hist_slices_count) >> 0]++;//Update array_hist
+    updateHist();
+    requestAnimationFrame(drawingLoopOnlyHist);
+}
+function drawingLoopOnlyHist() {
+    j = 0;
+    while ((j < chunck_length) && (current_length < length)) {
+        x = evalSkewTentMap(x, c);
+        array_hist[(x*hist_slices_count) >> 0]++;//Update array_hist
+        current_length++;
+        j++;
+    }
+    updateProgressBar();
+    if (current_length < length) {
+        updateHist();
+        requestAnimationFrame(drawingLoopOnlyHist);
+    }
+}
+</script>
+</html>

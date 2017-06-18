@@ -1,0 +1,345 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Assignment 2 Part 1</title>
+    <style>
+        body {
+          font: 16px sans-serif;
+          width: 930px;
+          margin: auto;
+        }
+        header {
+            color: white;
+            background: steelblue;
+            text-align: center;
+            padding: 5px;
+            border-radius: 15px 15px 0 0;
+        }
+        section {
+            border: 1px solid steelblue;
+            padding: 0 10px 0 10px;
+        }
+        #buttons {
+            text-align: center;
+            margin: 10px;
+        }
+        .axis path,
+        .axis line {
+          fill: none;
+          stroke: #000;
+          shape-rendering: crispEdges;
+        }
+        .col_name {
+            width: 100px;
+            text-align: right;
+            padding-right: 10px;
+            border-right: 1px solid black;
+        }
+        .col_value {
+            width: 200px;
+            text-align: left;
+            padding-left: 10px;
+        }
+        table {
+            border: 1px solid black;
+        }
+        table, th, td {
+            border-collapse: collapse;
+            margin: auto;
+        }
+        tr {
+            height: 1.5em;
+        }
+        tr:nth-child(even) {
+            color: white;
+            background: steelblue;
+        }
+        th {
+            border-bottom: 1px solid black;
+        }
+        footer {
+            height: 15px;
+            text-align: center;
+            background: steelblue;
+            padding: 5px;
+            border-radius: 0 0 10px 10px;
+        }
+        footer p {
+            margin: 0px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Assignment 2: Generating binary sequences based on skew tent maps</h1>
+        <h2>Part 1: Testing if the binary sequence is memoryless</h2>
+    </header>
+    <section>
+        <p>Here you can change the initial value, the c parameter of the skew tent map, the t parameter of the binary function and the sequence length of the generated chaotic sequence. Click "Compute !" to see the result.</p>
+        <div id="controls">
+            <label>Initial value: </label>
+            <input type="number" min="0" max="1" step="0.001" id="x" value=0.1></input>
+            <label>c: </label>
+            <input type="number" min="0" max="1" step="0.001" id="c" value=0.4999999999999></input>
+            <label>t: </label>
+            <input type="number" min="0" max="1" step="0.001" id="t" value=0.4999999999999></input>
+            <label>Sequence length: </label>
+            <input type="number" min="0" max="100000000" step="1000000" id="length" value=10000000></input>
+        </div>
+        <div id="buttons">
+            <button id="button_compute">Compute !</button> <span id="progress">000%</span>
+        </div>
+        <div id="results">
+            <h3>Results:</h3>
+            <table>
+                <tr>
+                    <th class="col_name">Value name</th>
+                    <th class="col_value">Experimental value</th>
+                    <th class="col_value">Theoretical value</th>
+                </tr>
+                <tr>
+                    <td class="col_name">P(0)</td>
+                    <td class="col_value" id="p0"></td>
+                    <td class="col_value" id="p0_theoretical"></td>
+                </tr>
+                <tr>
+                    <td class="col_name">P(1)</td>
+                    <td class="col_value" id="p1"></td>
+                    <td class="col_value" id="p1_theoretical"></td
+                </tr>
+                <tr>
+                    <td class="col_name">P(00)</td>
+                    <td class="col_value" id="p00"></td>
+                    <td class="col_value" id="p00_theoretical"></td>
+                </tr>
+                <tr>
+                    <td class="col_name">P(01)</td>
+                    <td class="col_value" id="p01"></td>
+                    <td class="col_value" id="p01_theoretical"></td>
+                </tr>
+                <tr>
+                    <td class="col_name">P(10)</td>
+                    <td class="col_value" id="p10"></td>
+                    <td class="col_value" id="p10_theoretical"></td>
+                </tr>
+                <tr>
+                    <td class="col_name">P(11)</td>
+                    <td class="col_value" id="p11"></td>
+                    <td class="col_value" id="p11_theoretical"></td>
+                </tr>
+                <tr>
+                    <td class="col_name">P(S0/S0)</td>
+                    <td class="col_value" id="ps0s0"></td>
+                    <td class="col_value" id="ps0s0_theoretical"></td>
+                </tr>
+                <tr>
+                    <td class="col_name">P(S1/S0)</td>
+                    <td class="col_value" id="ps1s0"></td>
+                    <td class="col_value" id="ps1s0_theoretical"></td>
+                </tr>
+                <tr>
+                    <td class="col_name">P(S0/S1)</td>
+                    <td class="col_value" id="ps0s1"></td>
+                    <td class="col_value" id="ps0s1_theoretical"></td>
+                </tr>
+                <tr>
+                    <td class="col_name">P(S1/S1)</td>
+                    <td class="col_value" id="ps1s1"></td>
+                    <td class="col_value" id="ps1s1_theoretical"></td>
+                </tr>
+            </table>
+        </div>
+        <div>
+            <h3>Discussion about the results</h3>
+            <p>Is the source memoryless? <span id="memoryless_result" style="color: steelblue"></span></p>
+            <p>Using c = 0.5 poses a problem this is why I use c = 0.4999999999999 as a default.</p>
+            <p>For different values of c, as long as t is equal to c, the source is memoryless and the experimental results match the theoretical ones.</p>
+            <p>If t is different from c, the source is non-memoryless.</p>
+        </div>
+        <div>
+            <h3>Relevent code</h3>
+            <p>Here is the skew tent map function:</p>
+            <pre>
+                function evalSkewTentMap(x, c) {
+                    if (0 <= c && c <= 1 && 0 <= x && x <= 1) {
+                        if (0 <= x && x < c) {
+                            return x/c;
+                        }
+                        else {
+                            return (1-x)/(1-c);
+                        }
+                    }    
+                    else {
+                        console.log("WARNING: c and x should be between 0 and 1");
+                    }
+                }
+            </pre>
+            <p>And here is the binary function:</p>
+            <pre>
+                function evalBinaryFunction(x, t) {
+                    return (x >= t);
+                }
+            </pre>
+            <p>To see all the code you can "Right-click -> View page source" and look at the script tags.</p>
+        </div>
+    </section>
+    <footer>
+        <p>Author: Nicolas GIRARD | Last update: 2015/11/13</p>
+    </footer>
+</body>
+
+
+<script src="d3.min.js" charset="utf-8"></script>
+<script>
+window.requestAnimationFrame = (function () {
+   return window.requestAnimationFrame ||
+         window.webkitRequestAnimationFrame ||
+         window.mozRequestAnimationFrame ||
+         function (callback) {
+             window.setTimeout(callback, 1000 / 60);
+         };
+     })();
+function isEqual(a, b) {
+    return (Math.abs(a - b) < 0.01);
+}
+function evalSkewTentMap(x, c) {
+    if (0 <= c && c <= 1 && 0 <= x && x <= 1) {
+        if (0 <= x && x < c) {
+            return x/c;
+        }
+        else {
+            return (1-x)/(1-c);
+        }
+    }    
+    else {
+        console.log("WARNING: c and x should be between 0 and 1");
+    }
+}
+function evalBinaryFunction(x, t) {
+    return Number(x >= t);
+}
+function updateTheoreticalValues() {
+    p0_theoretical.innerHTML = c;
+    p1_theoretical.innerHTML = 1-c;
+    p00_theoretical.innerHTML = c*c;
+    ps0s0_theoretical.innerHTML = c;
+    p01_theoretical.innerHTML = c*(1-c);
+    ps1s0_theoretical.innerHTML = 1-c;
+    p10_theoretical.innerHTML = (1-c)*c
+    ps0s1_theoretical.innerHTML = c;
+    p11_theoretical.innerHTML = (1-c)*(1-c);
+    ps1s1_theoretical.innerHTML = 1-c;
+}
+function updateResults() {
+    p0.innerHTML = (current_length - f1)/current_length;
+    p1.innerHTML = f1/current_length;
+    p00.innerHTML = f00/current_length;
+    ps0s0.innerHTML = f00/(current_length - f1);
+    p01.innerHTML = f01/current_length;
+    ps1s0.innerHTML = f01/(current_length - f1);
+    p10.innerHTML = f10/current_length;
+    ps0s1.innerHTML = f10/f1;
+    p11.innerHTML = f11/current_length;
+    ps1s1.innerHTML = f11/f1;
+}
+function updateMemorylessResult() {
+    var p00_independant = Math.pow(Number(p0.innerHTML), 2);
+    var p01_independant = p10_independant = Number(p0.innerHTML)*Number(p1.innerHTML);
+    var p11_independant = Math.pow(Number(p1.innerHTML), 2);
+    var memoryless_result = document.getElementById('memoryless_result');
+    if (isEqual(Number(p00.innerHTML), p00_independant) &&
+        isEqual(Number(p01.innerHTML), p01_independant) &&
+        isEqual(Number(p10.innerHTML), p10_independant) &&
+        isEqual(Number(p11.innerHTML), p11_independant)) {
+        memoryless_result.innerHTML = "Based on the results the source seems to be memoryless.";
+    }
+    else {
+        memoryless_result.innerHTML = "Based on the results the source seems to be non-memoryless.";
+    }
+}
+function updateProgress(percentage) {
+    progress.innerHTML = ('00' + Math.round(percentage*100)).substr(-3) + "%";
+}
+var x, c, t, length, current_length, chunck_length;
+var x_prev, binary_x, binary_x_prev;
+var progress;
+var p0, p1, p00, ps0s0, p01, ps1s0, p10, ps0s1, p11, ps1s1, f0, f1, f00, f01, f10, f11;
+var i;
+
+document.addEventListener("DOMContentLoaded", init, false);
+
+function init() {
+    p0 = document.getElementById('p0');
+    p1 = document.getElementById('p1');
+    p00 = document.getElementById('p00');
+    ps0s0 = document.getElementById('ps0s0');
+    p01 = document.getElementById('p01');
+    ps1s0 = document.getElementById('ps1s0');
+    p10 = document.getElementById('p10');
+    ps0s1 = document.getElementById('ps0s1');
+    p11 = document.getElementById('p11');
+    ps1s1 = document.getElementById('ps1s1');
+    
+    p0_theoretical = document.getElementById('p0_theoretical');
+    p1_theoretical = document.getElementById('p1_theoretical');
+    p00_theoretical = document.getElementById('p00_theoretical');
+    ps0s0_theoretical = document.getElementById('ps0s0_theoretical');
+    p01_theoretical = document.getElementById('p01_theoretical');
+    ps1s0_theoretical = document.getElementById('ps1s0_theoretical');
+    p10_theoretical = document.getElementById('p10_theoretical');
+    ps0s1_theoretical = document.getElementById('ps0s1_theoretical');
+    p11_theoretical = document.getElementById('p11_theoretical');
+    ps1s1_theoretical = document.getElementById('ps1s1_theoretical');
+    
+    progress = document.getElementById('progress');
+    document.getElementById('button_compute').addEventListener("click", function(){
+        compute();
+    });
+    document.getElementById('c').addEventListener("change", function(){
+        document.getElementById('t').value = this.value;
+    });
+    compute();
+}
+function compute() {
+    x_prev = Number(document.getElementById('x').value);
+    c = Number(document.getElementById('c').value);
+    t = Number(document.getElementById('t').value);
+    length = Number(document.getElementById('length').value);
+    current_length = 1;
+    chunck_length = Math.max(1, Math.min(1000000, length/10));
+    //Update theoretical values:
+    updateTheoreticalValues();
+    //Update results
+    binary_x_prev = evalBinaryFunction(x_prev, t);
+    f1 = binary_x_prev;
+    f00 = f01 = f10 = f11 = 0;
+    requestAnimationFrame(drawingLoop);
+}
+function drawingLoop() {
+    i = 0;
+    while ((i < chunck_length) && (current_length < length)) {
+        x = evalSkewTentMap(x_prev, c);
+        binary_x_prev = evalBinaryFunction(x_prev, t);
+        binary_x = evalBinaryFunction(x, t);
+        f1 += binary_x;
+        
+        f00 += (1 - binary_x_prev)*(1 - binary_x);
+        f01 += (1 - binary_x_prev)*binary_x;
+        f10 += binary_x_prev*(1 - binary_x);
+        f11 += binary_x_prev*binary_x;
+        x_prev = x;
+        current_length++;
+        i++;
+    }
+    updateResults();
+    updateProgress(current_length/length);
+    if (current_length < length) {
+        requestAnimationFrame(drawingLoop);
+    }
+    else {
+        updateMemorylessResult();
+    }
+}
+</script>
+</html>

@@ -1,0 +1,519 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Assignment 2 Part 1</title>
+    <style>
+        body {
+          font: 1.5em sans-serif;
+          width: 100%;
+          margin: auto;
+        }
+        input {
+            font-size: 1em;
+        }
+        header {
+            color: white;
+            background: steelblue;
+            text-align: center;
+            padding: 5px;
+            border-radius: 15px 15px 0 0;
+        }
+        section {
+            border: 2px solid steelblue;
+            padding: 0 10px 0 10px;
+        }
+        .graph_title {
+            text-align: center;
+            margin-bottom: 0;
+        }
+        .bar {
+            fill: steelblue;
+        }
+        #buttons {
+            text-align: center;
+            margin: 10px;
+        }
+        .axis path,
+        .axis line {
+          fill: none;
+          stroke: #000;
+          shape-rendering: crispEdges;
+        }
+        .line {
+          fill: none;
+          stroke: steelblue;
+          stroke-width: 1.5px;
+        }
+        .col_name {
+            width: 100px;
+            text-align: right;
+            padding-right: 10px;
+            border-right: 1px solid black;
+        }
+        .col_value {
+            width: 200px;
+            text-align: left;
+            padding-left: 10px;
+        }
+        table {
+            border: 1px solid black;
+        }
+        table, th, td {
+            border-collapse: collapse;
+        }
+        tr {
+            height: 1.5em;
+        }
+        tr:nth-child(even) {
+            color: white;
+            background: steelblue;
+        }
+        th {
+            border-bottom: 1px solid black;
+        }
+        footer {
+            text-align: center;
+            background: steelblue;
+            padding: 5px;
+            border-radius: 0 0 10px 10px;
+        }
+        footer p {
+            margin: 0px;
+        }
+        .floating-box {
+            display: inline-block;
+            vertical-align:top;
+            padding:10px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Assignment 3: Generating binary sequences based on piecewise linear chaotic maps</h1>
+        <h2>Part 1: Testing various values for the parameters</h2>
+    </header>
+    <section>
+        <p>Here you can change the initial value, the parameters p1 and p2 of the piecewise linear chaotic map and the sequence length of the generated chaotic sequence. Click "Compute !" to see the result.</p>
+        <div id="controls">
+            <label>Initial value: </label>
+            <input type="number" min="0" max="1" step="0.001" id="x" value=0.1></input>
+            <label>p1: </label>
+            <input type="number" min="0" max="1" step="0.001" id="param_p1" value=0.2></input>
+            <label>p2: </label>
+            <input type="number" min="0" max="1" step="0.001" id="param_p2" value=0.3></input>
+            <label>Sequence length: </label>
+            <input type="number" min="0" max="100000000" step="1000000" id="length" value=1000000></input>
+        </div>
+        <div id="buttons">
+            <button id="button_compute">Compute !</button> <span id="progress">000%</span>
+        </div>
+        <center id="results" >
+            <div class="floating-box">
+                <h4 class="graph_title">Piecewise map</h4>
+                <svg id="plot_map"></svg>
+            </div>
+            <div class="floating-box">
+                <h4 class="graph_title">Histogram graph</h4>                
+                <svg id="plot_hist"></svg>
+            </div>
+            <div>
+                <h4>Probabilities:</h4>
+                <table>
+                    <tr>
+                        <th class="col_name">Value name</th>
+                        <th class="col_value">Experimental value</th>
+                        <th class="col_value">Theoretical value</th>
+                    </tr>
+                    <tr>
+                        <td class="col_name">P(0)</td>
+                        <td class="col_value" id="p0"></td>
+                        <td class="col_value" id="p0_theoretical"></td>
+                    </tr>
+                    <tr>
+                        <td class="col_name">P(1)</td>
+                        <td class="col_value" id="p1"></td>
+                        <td class="col_value" id="p1_theoretical"></td>
+                    </tr>
+                    <tr>
+                        <td class="col_name">P(00)</td>
+                        <td class="col_value" id="p00"></td>
+                        <td class="col_value" id="p00_theoretical"></td>
+                    </tr>
+                    <tr>
+                        <td class="col_name">P(01)</td>
+                        <td class="col_value" id="p01"></td>
+                        <td class="col_value" id="p01_theoretical"></td>
+                    </tr>
+                    <tr>
+                        <td class="col_name">P(10)</td>
+                        <td class="col_value" id="p10"></td>
+                        <td class="col_value" id="p10_theoretical"></td>
+                    </tr>
+                    <tr>
+                        <td class="col_name">P(11)</td>
+                        <td class="col_value" id="p11"></td>
+                        <td class="col_value" id="p11_theoretical"></td>
+                    </tr>
+                    <tr>
+                        <td class="col_name">P(S0/S0)</td>
+                        <td class="col_value" id="ps0s0"></td>
+                        <td class="col_value" id="ps0s0_theoretical"></td>
+                    </tr>
+                    <tr>
+                        <td class="col_name">P(S1/S0)</td>
+                        <td class="col_value" id="ps1s0"></td>
+                        <td class="col_value" id="ps1s0_theoretical"></td>
+                    </tr>
+                    <tr>
+                        <td class="col_name">P(S0/S1)</td>
+                        <td class="col_value" id="ps0s1"></td>
+                        <td class="col_value" id="ps0s1_theoretical"></td>
+                    </tr>
+                    <tr>
+                        <td class="col_name">P(S1/S1)</td>
+                        <td class="col_value" id="ps1s1"></td>
+                        <td class="col_value" id="ps1s1_theoretical"></td>
+                    </tr>
+                </table>
+            </div>
+        </center>
+        <div>
+            <h3>Discussion about the results</h3>
+            <p>I tried several values for the initial value, p1 and p2. For example p1=0.2, p2=0.3 (p1+p2 &lt 1) and p1=0.6, p2=0.7 (p1+p2 &gt 1). All showed on the histogram that the chaotic maps are uniform.</p>
+            <p>The experimental values are very close to the theoritical ones. The theoritical values when p1+p2 &gt 1 are computed with slighly different formulas than for p1+p2 &lt 1.</p>
+        </div>
+        <div>
+            <h3>Relevant code</h3>
+            <p>Here is the initiation of the piecewise map function (computes c, a, c1, c2, d1, and d2):</p>
+            <pre>
+                function initMap(p1, p2) {
+                    c = p2/(p1 + p2);
+                    a = 1/(1 - p1 - p2);
+                    if (0 < a) {
+                        c1 = c*(1-1/a);
+                        c2 = c + (1-c)/a;
+                    }
+                    else {
+                        c2 = c*(1-1/a);
+                        c1 = c + (1-c)/a;
+                    }
+                    d1 = c1*(1-c);
+                    d2 = 1-(1-c2)*c;
+                }
+            </pre>
+            <p>Here is the piecewise map function:</p>
+            <pre>
+                function evalPiecewiseMap(x, c1, c2, a) {
+                    if (0 < x && x < c1) {
+                        return 1-x/c1;
+                    }
+                    else if (c1 < x && x < c2) {
+                        return (0 < a) ? (x-c1)*a:(x-c2)*a;
+                    }
+                    else if (c2 < x && x < 1) {
+                        return (1-x)/(1-c2);
+                    }
+                    else {
+                        console.log("WARNING: at least one value is out of bounds");
+                        return 0;
+                    }
+                }
+            </pre>
+            <p>To see all the code you can "Right-click -> View page source" and look at the script tags.</p>
+        </div>
+    </section>
+    <footer>
+        <p>Author: Nicolas GIRARD | Last update: 2015/12/05</p>
+    </footer>
+</body>
+
+
+<script src="d3.min.js" charset="utf-8"></script>
+<script>
+window.requestAnimationFrame = (function () {
+   return window.requestAnimationFrame ||
+         window.webkitRequestAnimationFrame ||
+         window.mozRequestAnimationFrame ||
+         function (callback) {
+             window.setTimeout(callback, 1000 / 60);
+         };
+     })();
+function plotLine(data) {
+    var margin = {top: 20, right: 20, bottom: 30, left: 50},
+        width = 350 - margin.left - margin.right,
+        height = 350 - margin.top - margin.bottom;
+
+    var x = d3.scale.linear()
+        .range([0, width]);
+
+    var y = d3.scale.linear()
+        .range([height, 0]);
+
+    var xAxis = d3.svg.axis()
+        .scale(x)
+        .orient("bottom")
+        .ticks(5);
+
+    var yAxis = d3.svg.axis()
+        .scale(y)
+        .orient("left");
+
+    var line = d3.svg.line()
+        .x(function(d) { return x(d.x); })
+        .y(function(d) { return y(d.y); });
+
+    var svg = d3.select("#plot_map")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    x.domain([0, 1]);
+    y.domain([0, 1]);
+
+    svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+    svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis);
+
+    svg.append("path")
+      .datum(data)
+      .attr("class", "line")
+      .attr("d", line);
+}
+function plotHistInit() {
+    var margin = {top: 20, right: 50, bottom: 60, left: 70},
+    width = 900 - margin.left - margin.right,
+    height = 300 - margin.top - margin.bottom;
+
+    var x = d3.scale.linear()
+        .range([0, width]);
+
+    var y = d3.scale.linear()
+        .range([height, 0]);
+
+    var xAxis = d3.svg.axis()
+        .scale(x)
+        .orient("bottom")
+        .ticks(10);
+
+    var yAxis = d3.svg.axis()
+        .scale(y)
+        .orient("left")
+        .ticks(10);
+
+    var svg = d3.select("#plot_hist")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    x.domain([0, 1]);
+    y.domain([0, 1.4]);
+
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis)
+      .append("text")
+        .attr("class", "label")
+        .attr("x", width)
+        .attr("y", 50)
+        .style("text-anchor", "end")
+        .text("x_n");
+
+    svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", -65)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Density");
+      
+    svg.selectAll(".bar")
+      .data(array_hist)
+    .enter().append("rect")
+      .attr("class", "bar")
+      .attr("id", function(d, i) {return "bar_" + i;})
+      .attr("x", function(d, i) { return x(i/hist_slices_count); })
+      .attr("width", width/hist_slices_count)
+      .attr("y", 0)
+      .attr("height", 0);
+      
+    return {svg: svg, width: width, height: height, x: x, y: y};
+}
+function updateHist() {
+    for (i = 0; i < hist_slices_count; i++) {
+        bar_param = plot_hist.y(array_hist[i]*hist_slices_count/current_length);
+        d3.select("#bar_" + i)
+          .attr("y", bar_param)
+          .attr("height", plot_hist.height - bar_param);
+     }
+}
+function newFilledArray(len, val) {
+    var rv = new Array(len);
+    while (--len >= 0) {
+        rv[len] = val;
+    }
+    return rv;
+}
+
+function isEqual(a, b) {
+    return (Math.abs(a - b) < 0.01);
+}
+function initMap(p1, p2) {
+    c = p2/(p1 + p2);
+    a = 1/(1 - p1 - p2);
+    if (0 < a) {
+        c1 = c*(1-1/a);
+        c2 = c + (1-c)/a;
+    }
+    else {
+        c2 = c*(1-1/a);
+        c1 = c + (1-c)/a;
+    }
+    d1 = c1*(1-c);
+    d2 = 1-(1-c2)*c;    
+    //console.log("c = ", c, "a = ", a, "c1 = ", c1, "c2 = ", c2, "d1 = ", d1,"d2 = ", d2);
+}
+function evalPiecewiseMap(x, c1, c2, a) {
+    if (0 < x && x < c1) {
+        return 1-x/c1;
+    }
+    else if (c1 < x && x < c2) {
+        return (0<a) ? (x-c1)*a:(x-c2)*a;
+    }
+    else if (c2 < x && x < 1) {
+        return (1-x)/(1-c2);
+    }
+    else {
+        console.log("WARNING: at least one value is out of bounds. x = ", x);
+        return 0;
+    }
+}
+function evalBinaryFunction(x, t) {
+    return Number(t <= x);
+}
+function updateTheoreticalValues() {
+    p0_theoretical.innerHTML = Math.fround(c);
+    p1_theoretical.innerHTML = Math.fround(1-c);
+    p00_theoretical.innerHTML = (0<a) ? Math.fround(c-d1):Math.fround(c1-d1);
+    ps0s0_theoretical.innerHTML = (0<a) ? Math.fround((c-d1)/c):Math.fround((c1-d1)/c);
+    p01_theoretical.innerHTML = (0<a) ? Math.fround(d1):Math.fround(d1 + c-c1);
+    ps1s0_theoretical.innerHTML = Math.fround(param_p1);
+    p10_theoretical.innerHTML = (0<a) ? Math.fround(1-d2):Math.fround(c2-c+1-d2);
+    ps0s1_theoretical.innerHTML = Math.fround(param_p2);
+    p11_theoretical.innerHTML = (0<a) ? Math.fround(d2-c):Math.fround(d2-c2);
+    ps1s1_theoretical.innerHTML = (0<a) ? Math.fround((d2-c)/(1-c)):Math.fround((d2-c2)/(1-c));
+}
+function updateResults() {
+    p0.innerHTML = (current_length - f1)/current_length;
+    p1.innerHTML = f1/current_length;
+    p00.innerHTML = f00/current_length;
+    ps0s0.innerHTML = f00/(current_length - f1);
+    p01.innerHTML = f01/current_length;
+    ps1s0.innerHTML = f01/(current_length - f1);
+    p10.innerHTML = f10/current_length;
+    ps0s1.innerHTML = f10/f1;
+    p11.innerHTML = f11/current_length;
+    ps1s1.innerHTML = f11/f1;
+}
+function updateProgress(percentage) {
+    progress.innerHTML = ('00' + Math.round(percentage*100)).substr(-3) + "%";
+}
+var array_hist, hist_slices_count, plot_hist, bar_param;
+var x, param_p1, param_p2, length, current_length, chunck_length;
+var c, a, c1, c2, d1, d2;
+var x_prev, binary_x, binary_x_prev;
+var progress;
+var p0, p1, p00, ps0s0, p01, ps1s0, p10, ps0s1, p11, ps1s1, f0, f1, f00, f01, f10, f11;
+var i;
+
+document.addEventListener("DOMContentLoaded", init, false);
+
+function init() {    
+    p0 = document.getElementById('p0');
+    p1 = document.getElementById('p1');
+    p00 = document.getElementById('p00');
+    ps0s0 = document.getElementById('ps0s0');
+    p01 = document.getElementById('p01');
+    ps1s0 = document.getElementById('ps1s0');
+    p10 = document.getElementById('p10');
+    ps0s1 = document.getElementById('ps0s1');
+    p11 = document.getElementById('p11');
+    ps1s1 = document.getElementById('ps1s1');
+    
+    p0_theoretical = document.getElementById('p0_theoretical');
+    p1_theoretical = document.getElementById('p1_theoretical');
+    p00_theoretical = document.getElementById('p00_theoretical');
+    ps0s0_theoretical = document.getElementById('ps0s0_theoretical');
+    p01_theoretical = document.getElementById('p01_theoretical');
+    ps1s0_theoretical = document.getElementById('ps1s0_theoretical');
+    p10_theoretical = document.getElementById('p10_theoretical');
+    ps0s1_theoretical = document.getElementById('ps0s1_theoretical');
+    p11_theoretical = document.getElementById('p11_theoretical');
+    ps1s1_theoretical = document.getElementById('ps1s1_theoretical');
+    
+    progress = document.getElementById('progress');
+    document.getElementById('button_compute').addEventListener("click", function(){
+        compute();
+    });
+    compute();
+}
+function compute() {
+    x_prev = Number(document.getElementById('x').value);
+    param_p1 = Number(document.getElementById('param_p1').value);
+    param_p2 = Number(document.getElementById('param_p2').value);
+    length = Number(document.getElementById('length').value);
+    hist_slices_count = 100;
+    array_hist = newFilledArray(hist_slices_count, 0);
+    plot_hist = plotHistInit();
+    current_length = 1;
+    chunck_length = Math.max(1, Math.min(1000000, length/10));
+    //
+    initMap(param_p1, param_p2);//Compute c, c1, c2, d1, d2
+    d3.selectAll('.line').remove();
+    plotLine([{x: 0, y: 1}, {x: c1, y: 0}, {x: c1, y: (0<a) ? 0:1}, {x: c2, y: (0<a) ? 1:0}, {x: c2, y: 1}, {x: 1, y: 0}]);
+    //Update theoretical values:
+    updateTheoreticalValues();
+    //Update results
+    binary_x_prev = evalBinaryFunction(x_prev, c);
+    array_hist[(x_prev*hist_slices_count) >> 0]++;//Update array_hist
+    updateHist();
+    f1 = binary_x_prev;
+    f00 = f01 = f10 = f11 = 0;
+    requestAnimationFrame(drawingLoop);
+}
+function drawingLoop() {
+    i = 0;
+    while ((i < chunck_length) && (current_length < length)) {
+        x = evalPiecewiseMap(x_prev, c1, c2, a);
+        array_hist[(x*hist_slices_count) >> 0]++;//Update array_hist
+        binary_x = evalBinaryFunction(x, c);
+        f1 += binary_x;
+        
+        f00 += (1 - binary_x_prev)*(1 - binary_x);
+        f01 += (1 - binary_x_prev)*binary_x;
+        f10 += binary_x_prev*(1 - binary_x);
+        f11 += binary_x_prev*binary_x;
+        x_prev = x;
+        binary_x_prev = binary_x;
+        current_length++;
+        i++;
+    }
+    updateResults();
+    updateProgress(current_length/length);
+    if (current_length < length) {
+        updateHist();
+        requestAnimationFrame(drawingLoop);
+    }
+}
+</script>
+</html>
